@@ -10,4 +10,4 @@ from models.transweight_transformations import TransWeightTransformations
 from models.transweight_matrix import TransWeightMatrix
 from models.vector_weighted_addition import VectorWeightedAddition
 from models.wmask import WMask
-
+from models.newmodel import NewModel

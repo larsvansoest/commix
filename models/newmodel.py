@@ -1,0 +1,120 @@
+import tensorflow as tf
+
+from models import AbstractModel
+from utils.ops import uv_affine_transform
+
+
+class NewModel(AbstractModel):
+    """
+    Contains the architecture of the TransWeight composition model.
+    Takes as input of two vectors (or batches of vectors). Its superclass is the AbstractModel,
+    all properties are defined and described there.
+    """
+
+    def __init__(self, embedding_size, nonlinearity, dropout_rate, transforms):
+        super(NewModel, self).__init__(embedding_size)
+        self._nonlinearity = nonlinearity
+        self._dropout_rate = dropout_rate
+        self._transforms = transforms # the number of transformations to use
+
+    def create_architecture(self):
+
+        self._transformations_tensor = tf.compat.v1.get_variable("transformations_tensor",
+                        shape=[self.transforms, 2*self.embedding_size, self.embedding_size]) # LARS: axes[1] times two to take concatenation of uv into account
+        self._transformations_bias = tf.compat.v1.get_variable("transformations_bias",
+                        shape=[self.transforms, self.embedding_size])
+
+        # rank 3 combination tensor - combines the transformed representations in the previous step
+        self._W = tf.compat.v1.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
+        self._W2 = tf.compat.v1.get_variable("W2", shape=[self.transforms, self.embedding_size, self.embedding_size])
+
+        # bias vector for the combination tensor
+        self._b = tf.compat.v1.get_variable("b", shape=[self.embedding_size])
+
+        self._architecture = self.compose(
+            u=self.embeddings_u,
+            v=self.embeddings_v,
+            transformations_tensor=self.transformations_tensor, 
+            transformations_bias=self.transformations_bias,
+            W=self.W,
+            W2=self.W2,
+            b=self.b)
+
+        self._architecture_normalized = super(
+            NewModel,self).l2_normalization_layer(self._architecture,1)
+
+    def transform(self, u, v, transformations_tensor, transformations_bias):
+        # batch_size x 2embedding_size
+        uv = tf.concat(values=[u, v], axis=1)
+
+        # create all the transformations of the input vectors u and v
+        # batch_size x 2embedding_size * transformations x 2embedding_size x embedding_size -> 
+        # batch_size x transformations x embedding_size
+        # LARS: comprimeer geconcat weer naar t x embedding
+        trans_uv = tf.tensordot(uv, transformations_tensor, axes=[[1], [1]])
+
+        # add biases
+        # batch_size x transformations x embedding_size + transformations x embedding_size (auto broadcast)
+        trans_uv_bias_sum = tf.add(trans_uv, transformations_bias)
+
+        return trans_uv_bias_sum        
+
+    def weight(self, reg_uv, _V, b):
+        # transformations are weighted using W into a final composed representation
+        weighted_uv = tf.tensordot(reg_uv, _V, axes=[[1,2], [0,1]])
+        weighted_uv_bias = tf.add(weighted_uv, b)
+
+        return weighted_uv_bias
+
+    def compose(self, u, v, transformations_tensor, transformations_bias, W, W2, b):
+        """
+        composition of the form:
+        p = W[T1[u;v]+b_1;T2[u;v]+b_2;T3[u;v]+b_3; ...; T_t[u;v]+b_t] + b
+        """
+
+        # perform all transformations
+        transformed_uv = self.transform(u, v, transformations_tensor, transformations_bias)
+
+        # apply dropout and nonlinearity
+        reg_uv = self.nonlinearity(
+            tf.compat.v1.layers.dropout(transformed_uv, rate=self.dropout_rate, training=self.is_training))
+
+        # weight the transformations into the final composed representation
+
+        #Vtij = Wtik * W2Tkj
+        _V = tf.einsum('tij,tjk->tik', W, W2)
+        weighted_transformations = self.weight(reg_uv, _V, b)
+
+        return weighted_transformations
+
+    @property
+    def dropout_rate(self):
+        return self._dropout_rate
+
+    @property
+    def transformations_tensor(self):
+        return self._transformations_tensor
+        
+    @property
+    def transformations_bias(self):
+        return self._transformations_bias
+        
+    @property
+    def W(self):
+        return self._W
+
+    @property
+    def W2(self):
+        return self._W2
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def nonlinearity(self):
+        return self._nonlinearity
+
+    @property
+    def transforms(self):
+        return self._transforms
