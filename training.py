@@ -261,6 +261,10 @@ if __name__ == '__main__':
     config.gpu_options.allow_growth = True
     args.config = config
 
+    _mypath = os.getcwd()
+    args.data_dir = _mypath + args.data_dir
+    args.embeddings = _mypath + args.embeddings
+
     args.training_data = str(Path(args.data_dir).joinpath("train_text.txt"))
     args.validation_data = str(Path(args.data_dir).joinpath("dev_text.txt"))
     args.test_data = str(Path(args.data_dir).joinpath("test_text.txt"))
