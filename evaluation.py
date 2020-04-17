@@ -3,6 +3,7 @@
 import math
 import argparse
 import itertools
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -150,6 +151,11 @@ if __name__ == '__main__':
     parser.add_argument("--max_rank", type=int, help="maximum rank", default=1000)
     parser.add_argument("--batch_size", type=int, help="how many instances per batch", default=500)
     args = parser.parse_args()
+
+    _mypath = os.getcwd()
+    args.embeddings = _mypath + args.embeddings
+    args.predictions = _mypath + args.predictions
+    args.ranks = _mypath + args.ranks
 
     embeddings = data.read_word_embeddings(args.embeddings, args.unknown_word_key)
     ranks = get_all_ranks(predictions_file=args.predictions, word_embeddings=embeddings,

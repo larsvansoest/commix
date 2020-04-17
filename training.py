@@ -27,7 +27,8 @@ from models import Addition, \
     TransWeightMatrix, \
     TransWeightTransformations, \
     VectorWeightedAddition, \
-    WMask
+    WMask, \
+    NewModel
 
 '''
 Script for training a composition model. Every composition model that inherits from AbstractModel
@@ -228,7 +229,7 @@ if __name__ == '__main__':
     parser.add_argument("--composition_model", type=str,
                         choices=["addition", "bilinear", "scalar_addition", "vector_addition",
                                  "matrix", "fulllex", "wmask", "trans_weight", "trans_weight_transformations",
-                                 "trans_weight_features", "trans_weight_matrix"],
+                                 "trans_weight_features", "trans_weight_matrix", "newmodel"],
                         help="which type of composition model should be used", default="vector_addition")
     parser.add_argument("--batch_size", type=int, help="how many instances should be contained in one batch?", default=100)
     parser.add_argument("--dropout", type=float, help="dropout rate", default=0.5)
@@ -279,6 +280,7 @@ if __name__ == '__main__':
         "bilinear": "dr1%.2f_dr2%.2f" % (args.dropout, args.dropout2),
         "fulllex": "dr%.2f" % (args.dropout),
         "trans_weight": "dr%.2f_tr%d" % (args.dropout, args.transforms),
+        "newmodel": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "trans_weight_transformations": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "trans_weight_features": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "trans_weight_matrix": "dr%.2f_tr%d" % (args.dropout, args.transforms),
@@ -335,7 +337,8 @@ if __name__ == '__main__':
         "trans_weight": TransWeight,
         "trans_weight_transformations": TransWeightTransformations,
         "trans_weight_features": TransWeightFeatures,
-        "trans_weight_matrix": TransWeightMatrix
+        "trans_weight_matrix": TransWeightMatrix,
+        "newmodel": NewModel
     }
     nonlinear_functions = {
         "tanh": tf.nn.tanh,
@@ -361,7 +364,7 @@ if __name__ == '__main__':
                                                     dropout_rate=args.dropout,
                                                     regularizer=args.regularizer)
         init_hashtable(mh_index_map, composition_model.index_hash, sess)
-    elif "trans_weight" in args.composition_model :
+    elif "trans_weight" in args.composition_model or args.composition_model == "newmodel":
 
         composition_model = composition_models[args.composition_model](embedding_size=embedding_size,
                                                                     nonlinearity=nonlinear_functions[args.nonlinearity],

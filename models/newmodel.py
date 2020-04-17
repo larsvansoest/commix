@@ -20,13 +20,13 @@ class NewModel(AbstractModel):
     def create_architecture(self):
 
         self._transformations_tensor = tf.get_variable("transformations_tensor",
-                        shape=[self.transforms, 2*self.embedding_size, self.embedding_size])
+                        shape=[self.transforms, 2*self.embedding_size, self.embedding_size]) # LARS: axes[1] times two to take concatenation of uv into account
         self._transformations_bias = tf.get_variable("transformations_bias",
                         shape=[self.transforms, self.embedding_size])
 
         # rank 3 combination tensor - combines the transformed representations in the previous step
         self._W = tf.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
-        self._W2 = tf.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
+        self._W2 = tf.get_variable("W2", shape=[self.transforms, self.embedding_size, self.embedding_size])
 
         # bias vector for the combination tensor
         self._b = tf.get_variable("b", shape=[self.embedding_size])
@@ -37,11 +37,11 @@ class NewModel(AbstractModel):
             transformations_tensor=self.transformations_tensor, 
             transformations_bias=self.transformations_bias,
             W=self.W,
-            W2=self.W2, 
+            W2=self.W2,
             b=self.b)
 
         self._architecture_normalized = super(
-            TransWeight,self).l2_normalization_layer(self._architecture,1)
+            NewModel,self).l2_normalization_layer(self._architecture,1)
 
     def transform(self, u, v, transformations_tensor, transformations_bias):
         # batch_size x 2embedding_size
@@ -50,6 +50,7 @@ class NewModel(AbstractModel):
         # create all the transformations of the input vectors u and v
         # batch_size x 2embedding_size * transformations x 2embedding_size x embedding_size -> 
         # batch_size x transformations x embedding_size
+        # LARS: comprimeer geconcat weer naar t x embedding
         trans_uv = tf.tensordot(uv, transformations_tensor, axes=[[1], [1]])
 
         # add biases
@@ -58,10 +59,9 @@ class NewModel(AbstractModel):
 
         return trans_uv_bias_sum        
 
-    def weight(self, reg_uv, W, W2, b):
+    def weight(self, reg_uv, _V, b):
         # transformations are weighted using W into a final composed representation
-        weighted_uv = tf.tensordot(reg_uv, W, axes=[[1,2], [0,1]])
-        weighted_uv2 = tf.tensordot(weighted_uv, W2, axes=[[1,2], [0,1]])
+        weighted_uv = tf.tensordot(reg_uv, _V, axes=[[1,2], [0,1]])
         weighted_uv_bias = tf.add(weighted_uv, b)
 
         return weighted_uv_bias
@@ -80,7 +80,10 @@ class NewModel(AbstractModel):
             tf.layers.dropout(transformed_uv, rate=self.dropout_rate, training=self.is_training))
 
         # weight the transformations into the final composed representation
-        weighted_transformations = self.weight(reg_uv, W, W2, b)
+
+        #Vtij = Wtik * W2Tkj
+        _V = tf.einsum('tij,tjk->tik', W, W2)
+        weighted_transformations = self.weight(reg_uv, _V, b)
 
         return weighted_transformations
 
