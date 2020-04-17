@@ -19,17 +19,17 @@ class NewModel(AbstractModel):
 
     def create_architecture(self):
 
-        self._transformations_tensor = tf.get_variable("transformations_tensor",
+        self._transformations_tensor = tf.compat.v1.get_variable("transformations_tensor",
                         shape=[self.transforms, 2*self.embedding_size, self.embedding_size]) # LARS: axes[1] times two to take concatenation of uv into account
-        self._transformations_bias = tf.get_variable("transformations_bias",
+        self._transformations_bias = tf.compat.v1.get_variable("transformations_bias",
                         shape=[self.transforms, self.embedding_size])
 
         # rank 3 combination tensor - combines the transformed representations in the previous step
-        self._W = tf.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
-        self._W2 = tf.get_variable("W2", shape=[self.transforms, self.embedding_size, self.embedding_size])
+        self._W = tf.compat.v1.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
+        self._W2 = tf.compat.v1.get_variable("W2", shape=[self.transforms, self.embedding_size, self.embedding_size])
 
         # bias vector for the combination tensor
-        self._b = tf.get_variable("b", shape=[self.embedding_size])
+        self._b = tf.compat.v1.get_variable("b", shape=[self.embedding_size])
 
         self._architecture = self.compose(
             u=self.embeddings_u,
@@ -77,7 +77,7 @@ class NewModel(AbstractModel):
 
         # apply dropout and nonlinearity
         reg_uv = self.nonlinearity(
-            tf.layers.dropout(transformed_uv, rate=self.dropout_rate, training=self.is_training))
+            tf.compat.v1.layers.dropout(transformed_uv, rate=self.dropout_rate, training=self.is_training))
 
         # weight the transformations into the final composed representation
 

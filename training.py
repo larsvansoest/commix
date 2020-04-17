@@ -259,6 +259,7 @@ if __name__ == '__main__':
 
     # log cpu/gpu info, prevent allocating so much memory
     config = tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
+    _sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
     config.gpu_options.allow_growth = True
     args.config = config
 
