@@ -74,8 +74,12 @@ def train(args, composition_model, training_data, validation_data, sess):
         if args.tensorboard != '':
             writer = tf.summary.FileWriter(args.tensorboard_path, sess.graph)
 
+        # LARS: Debugging run options
+        _runopts = tf.RunOptions(report_tensor_allocations_upon_oom=True)
+
         # init all variables
-        sess.run(tf.global_variables_initializer(), 
+        sess.run(tf.global_variables_initializer(),
+            options=_runopts,
             feed_dict={train_model.model.lookup_init:lookup_table,
             validation_model.model.lookup_init: lookup_table})
 
