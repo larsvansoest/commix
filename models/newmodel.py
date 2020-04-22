@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from models import AbstractModel
 from utils.ops import uv_affine_transform
-
+import sys
 
 class NewModel(AbstractModel):
     """
@@ -24,13 +24,13 @@ class NewModel(AbstractModel):
         self._transformations_tensor2 = tf.get_variable("transformations_tensor2",
                         shape=[self.transforms, 2*self.embedding_size, self.embedding_size])
         self._transformations_tensor3 = tf.get_variable("transformations_tensor3",
-                        shape=[self.transforms, self.transforms, 2*self.embedding_size])
+                        shape=[self.transforms, 2*self.transforms, self.embedding_size])
         self._transformations_bias = tf.get_variable("transformations_bias",
                         shape=[self.transforms, self.embedding_size])
         self._transformations_bias2 = tf.get_variable("transformations_bias2",
                         shape=[self.transforms, self.embedding_size])
         self._transformations_bias3 = tf.get_variable("transformations_bias3",
-                shape=[self.transforms, self.embedding_size])
+                        shape=[self.transforms, self.embedding_size])
 
         # rank 3 combination tensor - combines the transformed representations in the previous step
         self._W = tf.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
@@ -57,15 +57,28 @@ class NewModel(AbstractModel):
         uv = tf.concat(values=[u, v], axis=1)
         vu = tf.concat(values=[v, u], axis=1)
 
+        # create all the transformations of the input vectors u and v
+        # batch_size x 2embedding_size * transformations x 2embedding_size x embedding_size -> 
+        # batch_size x transformations x embedding_size
         trans_uv = tf.tensordot(uv, transformations_tensor, axes=[[1], [1]])
         trans_uv_bias_sum = tf.add(trans_uv, transformations_bias)
-
         trans_vu = tf.tensordot(vu, transformations_tensor2, axes=[[1], [1]])
         trans_vu_bias_sum = tf.add(trans_vu, transformations_bias2)
 
-        uvvu = tf.concat(values=[trans_uv_bias_sum, trans_vu_bias_sum], axis=0)            
-        
-        trans_uvvu = tf.tensordot(uvvu, transformations_tensor3, axes=[[1],[1]])
+        # batch_size x 2transformations x embeddings_size
+        uvvu = tf.concat(values=[trans_uv_bias_sum, trans_vu_bias_sum], axis=1)
+
+        # batch_size x 2transformations x embeddings_size * transformations x 2transformations x embedding_size ->
+        # batch_size x transformations x embedding_size
+        #trans_uvvu = tf.tensordot(uvvu, transformations_tensor3, axes=[[1], [1]])
+        _shape = trans_uv.get_shape()
+        uvvu.set_shape([_shape[0], _shape[1] * 2, _shape[2]])
+        #transformations_tensor3(80,160,200)
+        trans_uvvu = tf.einsum('akc,dkc->adc', uvvu, transformations_tensor3)
+
+        #temp = tf.print("test:", tf.shape(trans_uvvu, out_type=tf.dtypes.int32, name=None), output_stream=sys.stderr)
+        #with tf.control_dependencies([temp]):
+        #    result = trans_vu_bias_sum * 1
         trans_uvvu_bias_sum = tf.add(trans_uvvu, transformations_bias3)
 
         return trans_uvvu_bias_sum
