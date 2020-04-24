@@ -4,7 +4,7 @@ from models import AbstractModel
 from utils.ops import uv_affine_transform
 
 
-class NewModel(AbstractModel):
+class Option12(AbstractModel):
     """
     Contains the architecture of the TransWeight composition model.
     Takes as input of two vectors (or batches of vectors). Its superclass is the AbstractModel,
@@ -12,7 +12,7 @@ class NewModel(AbstractModel):
     """
 
     def __init__(self, embedding_size, nonlinearity, dropout_rate, transforms):
-        super(NewModel, self).__init__(embedding_size)
+        super(Option12, self).__init__(embedding_size)
         self._nonlinearity = nonlinearity
         self._dropout_rate = dropout_rate
         self._transforms = transforms # the number of transformations to use
@@ -46,7 +46,7 @@ class NewModel(AbstractModel):
             Vb=self.Vb)
 
         self._architecture_normalized = super(
-            NewModel,self).l2_normalization_layer(self._architecture,1)
+            Option12,self).l2_normalization_layer(self._architecture,1)
 
     def transform(self, u, v, transformations_tensor, transformations_bias):
         # batch_size x 2embedding_size
@@ -66,17 +66,16 @@ class NewModel(AbstractModel):
     def weight(self, reg_uv, W, V, Wb, Vb, _batchsize):
         # transformations are weighted using W into a final composed representation
         
-        # option2: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)
-        reg_uv.set_shape([_batchsize, self.transforms, self.embedding_size]) # Combats tf.einsum unknown shape rank error.
+        # option2: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)       
+        reg_uv.set_shape([_batchsize, self.transforms, self.embedding_size]) # Work-around tf.einsum unknown shape rank error.
         weighted_W_uv_opt2 = tf.einsum('btn,tmn->bmn', reg_uv, W)
         weighted_W_uv_opt2_bias = tf.add(weighted_W_uv_opt2, Wb)
 
         # option2.2: V(n x n) . I('b' x n x n) -> J('b' x n)
-        #weighted_V_W_uv_opt2 = tf.tensordot(weighted_W_uv_opt2_bias, V, axes=[[1], [0]])
-        #weighted_V_W_uv_opt2_bias = tf.add(weighted_V_W_uv_opt2, Vb)
+        weighted_V_W_uv_opt2 = tf.einsum('bmn,mn->bn', weighted_W_uv_opt2_bias, V)
+        weighted_V_W_uv_opt2_bias = tf.add(weighted_V_W_uv_opt2, Vb)
 
-        with tf.control_dependencies([weighted_W_uv_opt2_bias]):
-            return tf.add(tf.ones([100,200]), Vb)
+        return weighted_V_W_uv_opt2_bias
 
     def compose(self, u, v, transformations_tensor, transformations_bias, W, V, Wb, Vb):
         """
