@@ -28,7 +28,12 @@ class NewModel(AbstractModel):
         self._W = tf.get_variable("W", shape=[self.transforms, self.embedding_size, self.embedding_size])
 
         # bias vector for the combination tensor
-        self._b = tf.get_variable("b", shape=[self.embedding_size])
+        self._Wb = tf.get_variable("Wb", shape=[self.embedding_size, self.embedding_size])
+
+        self._V = tf.get_variable("V", shape=[self.embedding_size, self.embedding_size])
+
+        # bias vector for the combination tensor
+        self._Vb = tf.get_variable("Vb", shape=[self.embedding_size])
 
         self._architecture = self.compose(
             u=self.embeddings_u,
@@ -36,7 +41,9 @@ class NewModel(AbstractModel):
             transformations_tensor=self.transformations_tensor, 
             transformations_bias=self.transformations_bias,
             W=self.W, 
-            b=self.b)
+            Wb=self.Wb,
+            V=self.V,
+            Vb=self.Vb)
 
         self._architecture_normalized = super(
             NewModel,self).l2_normalization_layer(self._architecture,1)
@@ -56,14 +63,22 @@ class NewModel(AbstractModel):
 
         return trans_uv_bias_sum        
 
-    def weight(self, reg_uv, W, b):
+    def weight(self, reg_uv, W, V, Wb, Vb, _batchsize):
         # transformations are weighted using W into a final composed representation
-        weighted_uv = tf.tensordot(reg_uv, W, axes=[[1,2], [0,1]])
-        weighted_uv_bias = tf.add(weighted_uv, b)
+        
+        # option2: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)
+        reg_uv.set_shape([_batchsize, self.transforms, self.embedding_size]) # Combats tf.einsum unknown shape rank error.
+        weighted_W_uv_opt2 = tf.einsum('btn,tmn->bmn', reg_uv, W)
+        weighted_W_uv_opt2_bias = tf.add(weighted_W_uv_opt2, Wb)
 
-        return weighted_uv_bias
+        # option2.2: V(n x n) . I('b' x n x n) -> J('b' x n)
+        #weighted_V_W_uv_opt2 = tf.tensordot(weighted_W_uv_opt2_bias, V, axes=[[1], [0]])
+        #weighted_V_W_uv_opt2_bias = tf.add(weighted_V_W_uv_opt2, Vb)
 
-    def compose(self, u, v, transformations_tensor, transformations_bias, W, b):
+        with tf.control_dependencies([weighted_W_uv_opt2_bias]):
+            return tf.add(tf.ones([100,200]), Vb)
+
+    def compose(self, u, v, transformations_tensor, transformations_bias, W, V, Wb, Vb):
         """
         composition of the form:
         p = W[T1[u;v]+b_1;T2[u;v]+b_2;T3[u;v]+b_3; ...; T_t[u;v]+b_t] + b
@@ -77,7 +92,13 @@ class NewModel(AbstractModel):
             tf.layers.dropout(transformed_uv, rate=self.dropout_rate, training=self.is_training))
 
         # weight the transformations into the final composed representation
-        weighted_transformations = self.weight(reg_uv, W, b)
+        weighted_transformations = self.weight(
+            reg_uv, 
+            W, 
+            V, 
+            Wb, 
+            Vb,
+            reg_uv.get_shape()[0])
 
         return weighted_transformations
 
@@ -96,10 +117,18 @@ class NewModel(AbstractModel):
     @property
     def W(self):
         return self._W
+    
+    @property
+    def V(self):
+        return self._V
 
     @property
-    def b(self):
-        return self._b
+    def Vb(self):
+        return self._Vb
+
+    @property
+    def Wb(self):
+        return self._Wb
 
     @property
     def nonlinearity(self):
