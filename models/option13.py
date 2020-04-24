@@ -4,7 +4,7 @@ from models import AbstractModel
 from utils.ops import uv_affine_transform
 
 
-class Option21(AbstractModel):
+class Option13(AbstractModel):
     """
     Contains the architecture of the TransWeight composition model.
     Takes as input of two vectors (or batches of vectors). Its superclass is the AbstractModel,
@@ -12,7 +12,7 @@ class Option21(AbstractModel):
     """
 
     def __init__(self, embedding_size, nonlinearity, dropout_rate, transforms):
-        super(Option21, self).__init__(embedding_size)
+        super(Option13, self).__init__(embedding_size)
         self._nonlinearity = nonlinearity
         self._dropout_rate = dropout_rate
         self._transforms = transforms # the number of transformations to use
@@ -30,7 +30,7 @@ class Option21(AbstractModel):
         # bias vector for the combination tensor
         self._Wb = tf.get_variable("Wb", shape=[self.embedding_size, self.embedding_size])
 
-        self._V = tf.get_variable("V", shape=[self.embedding_size, self.embedding_size])
+        self._V = tf.get_variable("V", shape=[self.embedding_size])
 
         # bias vector for the combination tensor
         self._Vb = tf.get_variable("Vb", shape=[self.embedding_size])
@@ -46,7 +46,7 @@ class Option21(AbstractModel):
             Vb=self.Vb)
 
         self._architecture_normalized = super(
-            Option21,self).l2_normalization_layer(self._architecture,1)
+            Option13,self).l2_normalization_layer(self._architecture,1)
 
     def transform(self, u, v, transformations_tensor, transformations_bias):
         # batch_size x 2embedding_size
@@ -66,13 +66,13 @@ class Option21(AbstractModel):
     def weight(self, reg_uv, W, V, Wb, Vb, _batchsize):
         # transformations are weighted using W into a final composed representation
         
-        # option2: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)       
+        # option1: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)       
         reg_uv.set_shape([_batchsize, self.transforms, self.embedding_size]) # Work-around tf.einsum unknown shape rank error.
         weighted_W_uv_opt2 = tf.einsum('btn,tmn->bmn', reg_uv, W)
         weighted_W_uv_opt2_bias = tf.add(weighted_W_uv_opt2, Wb)
 
-        # option2.2: V(n x n) . I('b' x n x n) -> J('b' x n)
-        weighted_V_W_uv_opt2 = tf.einsum('bmn,mn->bn', weighted_W_uv_opt2_bias, V)
+        # option1.3: V(n) . I('b' x n x n) -> J('b' x n)
+        weighted_V_W_uv_opt2 = tf.einsum('bmn,m->bn', weighted_W_uv_opt2_bias, V)
         weighted_V_W_uv_opt2_bias = tf.add(weighted_V_W_uv_opt2, Vb)
 
         return weighted_V_W_uv_opt2_bias

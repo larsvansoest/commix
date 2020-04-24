@@ -30,8 +30,7 @@ from models import Addition, \
     WMask, \
     Option11, \
     Option12, \
-    Option21, \
-    Option22
+    Option13
 
 '''
 Script for training a composition model. Every composition model that inherits from AbstractModel
@@ -232,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument("--composition_model", type=str,
                         choices=["addition", "bilinear", "scalar_addition", "vector_addition",
                                  "matrix", "fulllex", "wmask", "trans_weight", "trans_weight_transformations",
-                                 "trans_weight_features", "trans_weight_matrix", "option11", "option12", "option21", "option22"],
+                                 "trans_weight_features", "trans_weight_matrix", "option11", "option12", "option13"],
                         help="which type of composition model should be used", default="vector_addition")
     parser.add_argument("--batch_size", type=int, help="how many instances should be contained in one batch?", default=100)
     parser.add_argument("--dropout", type=float, help="dropout rate", default=0.5)
@@ -286,8 +285,7 @@ if __name__ == '__main__':
         "trans_weight": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "option11": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "option12": "dr%.2f_tr%d" % (args.dropout, args.transforms),
-        "option21": "dr%.2f_tr%d" % (args.dropout, args.transforms),
-        "option22": "dr%.2f_tr%d" % (args.dropout, args.transforms),
+        "option13": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "trans_weight_transformations": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "trans_weight_features": "dr%.2f_tr%d" % (args.dropout, args.transforms),
         "trans_weight_matrix": "dr%.2f_tr%d" % (args.dropout, args.transforms),
@@ -347,8 +345,7 @@ if __name__ == '__main__':
         "trans_weight_matrix": TransWeightMatrix,
         "option11": Option11,
         "option12": Option12,
-        "option21": Option21,
-        "option22": Option22
+        "option13": Option13
     }
     nonlinear_functions = {
         "tanh": tf.nn.tanh,
@@ -374,7 +371,7 @@ if __name__ == '__main__':
                                                     dropout_rate=args.dropout,
                                                     regularizer=args.regularizer)
         init_hashtable(mh_index_map, composition_model.index_hash, sess)
-    elif "trans_weight" in args.composition_model or args.composition_model == "option11" or args.composition_model == "option12" or args.composition_model == "option21"  or args.composition_model == "option22":
+    elif "trans_weight" in args.composition_model or args.composition_model == "option11" or args.composition_model == "option12" or args.composition_model == "option13":
         composition_model = composition_models[args.composition_model](embedding_size=embedding_size,
                                                                     nonlinearity=nonlinear_functions[args.nonlinearity],
                                                                     dropout_rate=args.dropout,

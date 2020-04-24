@@ -12,5 +12,4 @@ from models.vector_weighted_addition import VectorWeightedAddition
 from models.wmask import WMask
 from models.option11 import Option11
 from models.option12 import Option12
-from models.option21 import Option21
-from models.option22 import Option22
+from models.option13 import Option13

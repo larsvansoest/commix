@@ -30,7 +30,7 @@ class Option11(AbstractModel):
         # bias vector for the combination tensor
         self._Wb = tf.get_variable("Wb", shape=[self.embedding_size, self.embedding_size])
 
-        self._V = tf.get_variable("V", shape=[self.embedding_size, self.embedding_size])
+        self._V = tf.get_variable("V", shape=[self.embedding_size, self.embedding_size, self.embedding_size])
 
         # bias vector for the combination tensor
         self._Vb = tf.get_variable("Vb", shape=[self.embedding_size])
@@ -66,13 +66,13 @@ class Option11(AbstractModel):
     def weight(self, reg_uv, W, V, Wb, Vb, _batchsize):
         # transformations are weighted using W into a final composed representation
         
-        # option2: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)       
+        # option1: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)       
         reg_uv.set_shape([_batchsize, self.transforms, self.embedding_size]) # Work-around tf.einsum unknown shape rank error.
         weighted_W_uv_opt2 = tf.einsum('btn,tmn->bmn', reg_uv, W)
         weighted_W_uv_opt2_bias = tf.add(weighted_W_uv_opt2, Wb)
 
-        # option2.2: V(n x n) . I('b' x n x n) -> J('b' x n)
-        weighted_V_W_uv_opt2 = tf.einsum('bmn,mn->bn', weighted_W_uv_opt2_bias, V)
+        # option1.1: V(n x n x n) . I('b' x n x n) -> J('b' x n)
+        weighted_V_W_uv_opt2 = tf.einsum('bmn,mno->bo', weighted_W_uv_opt2_bias, V)
         weighted_V_W_uv_opt2_bias = tf.add(weighted_V_W_uv_opt2, Vb)
 
         return weighted_V_W_uv_opt2_bias
