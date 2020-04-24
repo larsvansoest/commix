@@ -68,11 +68,11 @@ class Option13(AbstractModel):
         
         # option1: W(t x n x n) . H('b' x t x n) -> I('b' x n x n)       
         reg_uv.set_shape([_batchsize, self.transforms, self.embedding_size]) # Work-around tf.einsum unknown shape rank error.
-        weighted_W_uv_opt2 = tf.einsum('btn,tmn->bmn', reg_uv, W)
+        weighted_W_uv_opt2 = tf.einsum('btn,tnm->bmn', reg_uv, W)
         weighted_W_uv_opt2_bias = tf.add(weighted_W_uv_opt2, Wb)
 
         # option1.3: V(n) . I('b' x n x n) -> J('b' x n)
-        weighted_V_W_uv_opt2 = tf.einsum('bmn,m->bn', weighted_W_uv_opt2_bias, V)
+        weighted_V_W_uv_opt2 = tf.einsum('bmn,n->bm', weighted_W_uv_opt2_bias, V)
         weighted_V_W_uv_opt2_bias = tf.add(weighted_V_W_uv_opt2, Vb)
 
         return weighted_V_W_uv_opt2_bias

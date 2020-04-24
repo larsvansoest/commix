@@ -241,7 +241,7 @@ if __name__ == '__main__':
     parser.add_argument("--tensorboard", type=str, help="if defined the information for tensorboard will be saved to the given directory", default='')
     parser.add_argument("--seed" , type=int, help="number to which random seed is set", default=1)
     parser.add_argument("--save_path", type=str, help="file path to save the best model", default="./trained_models")
-    parser.add_argument("--transforms", type=int, help="number of transforms", default=120)
+    parser.add_argument("--transforms", type=int, help="number of transforms", default=100)
     parser.add_argument("--use_weighting", help="set flag to true to use weighting in TransformationWeighting model", action='store_true', default=False )
     parser.add_argument("--nonlinearity", type=str, help="what kind of nonlinear function should be applied to the model. set to 'identity' if no nonlinearity should be applied",
                         default='identity', choices=["tanh", "identity", "relu"])
